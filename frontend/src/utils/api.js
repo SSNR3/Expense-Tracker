@@ -1,4 +1,4 @@
-const BASE = '/api'
+const BASE ="https://expense-trackerbackend-225b.onrender.com";
 
 async function req(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
