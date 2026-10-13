@@ -11,7 +11,11 @@ import httpx
 from datetime import datetime, date
 import os
 
-app = FastAPI(title="Expense Tracker API", version="1.0.0")
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"status": "online", "message": "Expense Tracker API is running"}
 
 app.add_middleware(
     CORSMiddleware,
