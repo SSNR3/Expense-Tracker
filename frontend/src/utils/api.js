@@ -1,19 +1,55 @@
-const BASE = "https://expense-trackerbackend-225b.onrender.com/api";
+﻿const BASE = "https://expense-trackerbackend-225b.onrender.com/api";
 
 async function req(path, options = {}) {
+  const token = localStorage.getItem('token');
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Request failed')
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader,
+      ...options.headers,
+    },
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('auth-logout'));
   }
-  return res.json()
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Request failed');
+  }
+  return res.json();
 }
 
-// Expenses
 export const api = {
+  auth: {
+    login: async (username, password) => {
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
+      const res = await fetch(`${BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+        throw new Error(err.detail || 'Login failed');
+      }
+      return res.json();
+    },
+    register: (data) => req('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+    me: () => req('/auth/me'),
+  },
+  admin: {
+    listUsers: () => req('/admin/users'),
+    deleteUser: (id) => req(`/admin/users/${id}`, { method: 'DELETE' }),
+  },
   expenses: {
     list: (params = {}) => req(`/expenses?${new URLSearchParams(params)}`),
     create: (data) => req('/expenses', { method: 'POST', body: JSON.stringify(data) }),
@@ -39,9 +75,15 @@ export const api = {
     insights: () => req('/ai/insights'),
   },
   export: {
-    csv: () => window.open('/api/export/csv', '_blank'),
-    json: () => window.open('/api/export/json', '_blank'),
+    csv: () => {
+      const token = localStorage.getItem('token');
+      window.open(`${BASE}/export/csv?token=${token || ''}`, '_blank');
+    },
+    json: () => {
+      const token = localStorage.getItem('token');
+      window.open(`${BASE}/export/json?token=${token || ''}`, '_blank');
+    },
   },
-}
+};
 
-export default api
+export default api;
