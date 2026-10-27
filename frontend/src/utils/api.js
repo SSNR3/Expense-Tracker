@@ -1,4 +1,5 @@
-const BASE ="https://expense-trackerbackend-225b.onrender.com";
+// AFTER
+const BASE = "https://expense-trackerbackend-225b.onrender.com/api";
 
 async function req(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
