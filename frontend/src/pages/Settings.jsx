@@ -32,7 +32,7 @@ export default function Settings({ settings, setSettings }) {
       const res = await fetch('https://expense-trackerbackend-225b.onrender.com/api/import/json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       })
       const result = await res.json()
       sound.party()
