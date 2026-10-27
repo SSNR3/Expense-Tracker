@@ -76,7 +76,7 @@ export default function App() {
   }, [])
 
   if (!currentUser) {
-    return <Login onLoginSuccess="{(u)"> setCurrentUser(u)} />
+    return <Login onLoginSuccess={(u) => setCurrentUser(u)} />
   }
 
   const navItems = [
@@ -93,8 +93,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen applied-canvas flex text-stone-900 relative">
-      <ConfettiCanvas active="{showConfetti}" onDone="{()"> setShowConfetti(false)} />
-      <PartyPopup onDone="{()" show="{showParty}"> setShowParty(false)} />
+      <ConfettiCanvas active={showConfetti} onDone={() => setShowConfetti(false)} />
+      <PartyPopup show={showParty} onDone={() => setShowParty(false)} />
 
       {sidebarOpen && (
         <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -110,7 +110,7 @@ export default function App() {
         <div className="p-5 border-b border-stone-200/60">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-400 border border-amber-300 flex items-center justify-center text-stone-950 shadow-sm">
-              <TrendingUp size="{20}"/>
+              <TrendingUp size={20} />
             </div>
             <div>
               <div className="font-extrabold text-stone-900 text-base tracking-tight">FinFlow</div>
@@ -127,7 +127,7 @@ export default function App() {
               onClick={() => { sound.pop(); handleNavigate(id) }}
               className={`nav-item w-full text-left ${page === id ? 'active' : ''}`}
             >
-              <Icon size="{16}"/>
+              <Icon size={16} />
               {label}
               {page === id && (
                 <div className="ml-auto w-2 h-2 rounded-full bg-amber-500" />
@@ -142,7 +142,7 @@ export default function App() {
             className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold
                        bg-amber-400/20 border border-amber-400/40 text-stone-900 hover:bg-amber-400/30 transition-all shadow-sm"
           >
-            <Bot className="text-amber-700" size="{16}"/>
+            <Bot size={16} className="text-amber-700" />
             AI Financial Advisor
             <div className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </button>
@@ -153,7 +153,7 @@ export default function App() {
               <div className="truncate">
                 <div className="text-xs font-bold text-stone-900 truncate">{currentUser.username}</div>
                 <div className="text-[10px] uppercase tracking-wider text-amber-700 flex items-center gap-1 font-bold">
-                  {currentUser.role === 'admin' && <Shield size="{10}"/>}
+                  {currentUser.role === 'admin' && <Shield size={10} />}
                   {currentUser.role}
                 </div>
               </div>
@@ -163,7 +163,7 @@ export default function App() {
               title="Logout"
               className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
             >
-              <LogOut size="{15}"/>
+              <LogOut size={15} />
             </button>
           </div>
         </div>
@@ -174,7 +174,7 @@ export default function App() {
         <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-stone-200/80 px-4 lg:px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden btn-ghost p-2">
-              <Menu size="{18}"/>
+              <Menu size={18} />
             </button>
             <div>
               <h1 className="text-stone-900 font-bold text-base leading-none capitalize">
@@ -189,27 +189,27 @@ export default function App() {
           <div className="flex items-center gap-2">
             {currentUser.role === 'admin' && (
               <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-800 text-xs font-bold">
-                <Shield className="text-amber-600" size="{12}"/> Super User Access
+                <Shield size={12} className="text-amber-600" /> Super User Access
               </span>
             )}
             <button onClick={() => { sound.pop(); setAiOpen(true) }} className="btn-ghost text-xs">
-              <Bot className="text-amber-600" size="{13}"/> Ask AI
+              <Bot size={13} className="text-amber-600" /> Ask AI
             </button>
           </div>
         </header>
 
         <main className="flex-1 p-4 lg:p-6 page-enter overflow-auto">
-          {page === 'dashboard'    && <Dashboard navigate="{handleNavigate}" onExpenseAdded="{handleExpenseAdded}" onParty="{handleParty}" settings="{settings}" summary="{summary}"/>}
-          {page === 'transactions' && <Transactions onExpenseAdded="{handleExpenseAdded}" settings="{settings}"/>}
-          {page === 'analytics'    && <Analytics settings="{settings}"/>}
-          {page === 'budgets'      && <Budgets settings="{settings}"/>}
-          {page === 'settings'     && <SettingsPage setSettings="{setSettings}" settings="{settings}"/>}
-          {page === 'users' && currentUser.role === 'admin' && <UsersManagement currentUser="{currentUser}" settings="{settings}"/>}
+          {page === 'dashboard'    && <Dashboard settings={settings} navigate={handleNavigate} onExpenseAdded={handleExpenseAdded} summary={summary} onParty={handleParty} />}
+          {page === 'transactions' && <Transactions settings={settings} onExpenseAdded={handleExpenseAdded} />}
+          {page === 'analytics'    && <Analytics settings={settings} />}
+          {page === 'budgets'      && <Budgets settings={settings} />}
+          {page === 'settings'     && <SettingsPage settings={settings} setSettings={setSettings} />}
+          {page === 'users' && currentUser.role === 'admin' && <UsersManagement settings={settings} currentUser={currentUser} />}
         </main>
       </div>
 
-      <AIAdvisor onClose="{()" open="{aiOpen}"> setAiOpen(false)} settings={settings} />
-      <FloatingCharacter onParty="{handleParty}" summary="{summary}"/>
+      <AIAdvisor open={aiOpen} onClose={() => setAiOpen(false)} settings={settings} />
+      <FloatingCharacter summary={summary} onParty={handleParty} />
     </div>
   )
 }
