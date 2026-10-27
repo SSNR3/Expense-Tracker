@@ -28,15 +28,13 @@ app.add_middleware(
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "expenses.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-# ── Cloud AI Setup ────────────────────────────────────────────────────────
 CLOUD_AI_BASE = "https://api.sambanova.ai/v1"
 CLOUD_AI_KEY = os.getenv("VITE_AI_API_KEY", "f2875895fce843c68c55a59c02317cb2.hfvc9Ea5NkgEV3xGl7nh-Dmt")
 CLOUD_AI_MODEL = "Meta-Llama-3.1-8B-Instruct"
 
-# ── Authentication / Security Configuration ──────────────────────────────
 SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-finflow-key-change-in-production-2026")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -59,7 +57,6 @@ def create_access_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload.update({"exp": int(expire.timestamp())})
     header = {"alg": ALGORITHM, "typ": "JWT"}
-    
     seg1 = base64url_encode(json.dumps(header).encode('utf-8'))
     seg2 = base64url_encode(json.dumps(payload).encode('utf-8'))
     sig = hmac.new(SECRET_KEY.encode('utf-8'), f"{seg1}.{seg2}".encode('utf-8'), hashlib.sha256).digest()
@@ -99,7 +96,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 def require_admin(current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin / Superuser full access required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin full access required")
     return current_user
 
 def get_db():
@@ -203,9 +200,8 @@ class AIQuery(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "online", "message": "Expense Tracker API is running"}
+    return {"status": "online", "message": "FinFlow Expense Tracker API is running"}
 
-# ── Auth Endpoints ────────────────────────────────────────────────────────────
 @app.post("/api/auth/register", status_code=201)
 def register(user: UserRegister):
     conn = get_db()
@@ -256,7 +252,7 @@ def get_all_users(admin: dict = Depends(require_admin)):
 @app.delete("/api/admin/users/{user_id}")
 def delete_user(user_id: int, admin: dict = Depends(require_admin)):
     if admin["id"] == user_id:
-        raise HTTPException(status_code=400, detail="Cannot delete your own superuser account")
+        raise HTTPException(status_code=400, detail="Cannot delete superuser")
     conn = get_db()
     c = conn.cursor()
     c.execute("DELETE FROM expenses WHERE user_id = ?", (user_id,))
@@ -265,7 +261,7 @@ def delete_user(user_id: int, admin: dict = Depends(require_admin)):
     c.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
-    return {"message": "User and all related data purged"}
+    return {"message": "User purged"}
 
 @app.get("/api/expenses")
 def list_expenses(
@@ -360,6 +356,7 @@ def delete_expense(expense_id: int, current_user: dict = Depends(get_current_use
 def get_analytics_summary(current_user: dict = Depends(get_current_user)):
     conn = get_db()
     c = conn.cursor()
+    now = datetime.now()
     today = date.today()
     first_day = today.replace(day=1).strftime("%Y-%m-%d")
     today_str = today.strftime("%Y-%m-%d")
@@ -394,7 +391,7 @@ def get_analytics_summary(current_user: dict = Depends(get_current_user)):
         [last_week_start, last_week_end] + p_u
     ).fetchone()[0]
 
-    by_category = c.execute(
+    category_rows = c.execute(
         f"""SELECT category, SUM(amount) as total, COUNT(*) as count
             FROM expenses WHERE date >= ? AND date <= ? {u_filter}
             GROUP BY category ORDER BY total DESC""",
@@ -408,12 +405,15 @@ def get_analytics_summary(current_user: dict = Depends(get_current_user)):
         p_u
     ).fetchall()
 
-    by_payment = c.execute(
+    payment_rows = c.execute(
         f"""SELECT payment_method, SUM(amount) as total
             FROM expenses WHERE date >= ? AND date <= ? {u_filter}
             GROUP BY payment_method""",
         [first_day, today_str] + p_u
     ).fetchall()
+
+    days_elapsed = now.day
+    daily_avg = total_month / max(days_elapsed, 1)
 
     mom_change_pct = 0.0
     if total_last_month > 0:
@@ -424,16 +424,24 @@ def get_analytics_summary(current_user: dict = Depends(get_current_user)):
         wow_change_pct = round(((total_week - total_last_week) / total_last_week) * 100, 1)
 
     conn.close()
+
+    cat_list = [dict(r) for r in category_rows]
+    pay_list = [dict(r) for r in payment_rows]
+
     return {
         "total_month": round(total_month, 2),
         "total_last_month": round(total_last_month, 2),
         "total_week": round(total_week, 2),
         "total_last_week": round(total_last_week, 2),
+        "daily_avg": round(daily_avg, 2),
+        "days_elapsed": days_elapsed,
         "mom_change_pct": mom_change_pct,
         "wow_change_pct": wow_change_pct,
-        "by_category": [dict(r) for r in by_category],
+        "category_breakdown": cat_list,
+        "by_category": cat_list,
         "monthly_trend": [dict(r) for r in reversed(monthly_trend)],
-        "by_payment": [dict(r) for r in by_payment],
+        "payment_breakdown": pay_list,
+        "by_payment": pay_list,
     }
 
 @app.get("/api/analytics/budget-vs-actual")
