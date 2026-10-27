@@ -19,13 +19,13 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true)
     try {
       if (isRegister) {
-        await api.auth.register({ username, password })
-        toast.success('Account created! Logging in...')
+        const res = await api.auth.register({ username, password })
+        toast.success(res.message || 'Account created!')
       }
       const data = await api.auth.login(username, password)
       localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
-      toast.success(`Welcome ${data.username}! (${data.role.toUpperCase()})`)
+      toast.success(`Welcome back, ${data.username}! (${data.role.toUpperCase()})`)
       onLoginSuccess(data)
     } catch (err) {
       toast.error(err.message || 'Authentication failed')
@@ -35,28 +35,25 @@ export default function Login({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-screen charcoal-bg flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-neonPink/20 blur-[120px] pointer-events-none animate-pulse-glow" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-electricSapphire/20 blur-[120px] pointer-events-none animate-pulse-glow" style={{ animationDelay: '1.2s' }} />
-      <div className="absolute top-1/2 right-1/3 w-64 h-64 rounded-full bg-indigoBloom/20 blur-[100px] pointer-events-none animate-float-slow" />
+    <div className="min-h-screen applied-canvas flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-amber-400/15 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-amber-600/10 blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-md glass-card p-8 relative z-10 animate-fade-in border border-white/10 shadow-2xl">
+      <div className="w-full max-w-md glass-card p-8 relative z-10 animate-fade-in shadow-xl bg-white/95 border border-stone-200">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-neonPink via-indigoBloom to-electricSapphire shadow-neon mb-4">
-            <Sparkles size={32} className="text-white animate-pulse" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400 border border-amber-300 text-stone-950 shadow-md mb-3">
+            <Sparkles size="{28}"/>
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight shimmer-text">
-            FinFlow
-          </h1>
-          <p className="text-white/40 text-sm mt-1">Financial Intelligence & Expense Tracker</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight">FinFlow</h1>
+          <p className="text-stone-500 text-xs mt-1">Financial Intelligence & Multi-Tenant Engine</p>
         </div>
 
-        <div className="flex bg-surface-700/60 p-1 rounded-xl mb-6 border border-white/[0.06]">
+        <div className="flex bg-stone-100 p-1 rounded-xl mb-6 border border-stone-200">
           <button
             type="button"
             onClick={() => setIsRegister(false)}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-              !isRegister ? 'bg-gradient-to-r from-neonPink to-indigoBloom text-white shadow-md' : 'text-white/50 hover:text-white'
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              !isRegister ? 'bg-white text-stone-900 shadow-sm border border-stone-200/60' : 'text-stone-500 hover:text-stone-900'
             }`}
           >
             Sign In
@@ -64,8 +61,8 @@ export default function Login({ onLoginSuccess }) {
           <button
             type="button"
             onClick={() => setIsRegister(true)}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-              isRegister ? 'bg-gradient-to-r from-neonPink to-indigoBloom text-white shadow-md' : 'text-white/50 hover:text-white'
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              isRegister ? 'bg-white text-stone-900 shadow-sm border border-stone-200/60' : 'text-stone-500 hover:text-stone-900'
             }`}
           >
             Create Account
@@ -75,12 +72,12 @@ export default function Login({ onLoginSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label flex items-center gap-1.5">
-              <User size={13} className="text-neonPink" /> Username
+              <User className="text-amber-600" size="{13}"/> Username
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. admin or username"
+              placeholder="Enter your username"
               className="input-field"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -89,12 +86,12 @@ export default function Login({ onLoginSuccess }) {
 
           <div>
             <label className="label flex items-center gap-1.5">
-              <Lock size={13} className="text-skyAqua" /> Password
+              <Lock className="text-amber-600" size="{13}"/> Password
             </label>
             <input
               type="password"
               required
-              placeholder="••••••••"
+              placeholder={isRegister ? "Min 8 chars, 1 uppercase, 1 digit" : "••••••••"}
               className="input-field"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -106,25 +103,19 @@ export default function Login({ onLoginSuccess }) {
             disabled={loading}
             className="btn-primary w-full justify-center py-3 text-sm mt-2"
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Processing...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                {isRegister ? <UserPlus size={16} /> : <ArrowRight size={16} />}
-                {isRegister ? 'Create Account' : 'Sign In'}
+            {loading ? 'Authenticating...' : (
+              <span className="flex items-center gap-2 font-bold">
+                {isRegister ? <UserPlus size="{16}"/> : <ArrowRight size="{16}"/>}
+                {isRegister ? 'Register Account' : 'Access Portal'}
               </span>
             )}
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-white/[0.08] text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-700/60 border border-white/[0.06] text-xs text-white/50">
-            <Shield size={13} className="text-skyAqua" />
-            Default Super User: <span className="text-white font-mono font-medium">admin</span> / <span className="text-white font-mono font-medium">admin123</span>
-          </div>
+        <div className="mt-6 pt-4 border-t border-stone-100 text-center">
+          <p className="text-stone-400 text-[11px]">
+            {isRegister ? "The first registered user is automatically promoted to Superuser." : "Protected by timing-safe encryption & rate limiting."}
+          </p>
         </div>
       </div>
     </div>

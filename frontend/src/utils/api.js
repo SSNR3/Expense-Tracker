@@ -38,7 +38,7 @@ export const api = {
         body: formData,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+        const err = await res.json().catch(() => ({ detail: 'Authentication failed' }));
         throw new Error(err.detail || 'Login failed');
       }
       return res.json();
@@ -48,6 +48,10 @@ export const api = {
   },
   admin: {
     listUsers: () => req('/admin/users'),
+    resetPassword: (target_user_id, new_password) => req('/admin/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ target_user_id, new_password })
+    }),
     deleteUser: (id) => req(`/admin/users/${id}`, { method: 'DELETE' }),
   },
   expenses: {

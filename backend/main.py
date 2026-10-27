@@ -2,7 +2,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import sqlite3
 import json
@@ -12,10 +12,11 @@ import httpx
 import hashlib
 import hmac
 import base64
+import re
 from datetime import datetime, date, timedelta, timezone
 import os
 
-app = FastAPI(title="FinFlow API")
+app = FastAPI(title="FinFlow Intelligence API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,14 +33,28 @@ CLOUD_AI_BASE = "https://api.sambanova.ai/v1"
 CLOUD_AI_KEY = os.getenv("VITE_AI_API_KEY", "f2875895fce843c68c55a59c02317cb2.hfvc9Ea5NkgEV3xGl7nh-Dmt")
 CLOUD_AI_MODEL = "Meta-Llama-3.1-8B-Instruct"
 
-SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-finflow-key-change-in-production-2026")
+SECRET_KEY = os.getenv("JWT_SECRET", "finflow-jwt-secure-entropy-key-2026-auth-protect")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+FAILED_ATTEMPTS = {}
+LOCKOUT_THRESHOLD = 5
+LOCKOUT_MINUTES = 10
+
+def validate_password_strength(password: str):
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    if not re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one lowercase letter")
+    if not re.search(r"[0-9]", password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one digit")
+
 def hash_password(password: str) -> str:
-    salt = "finflow_salt_"
+    salt = "finflow_high_entropy_salt_"
     return hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -60,8 +75,7 @@ def create_access_token(data: dict) -> str:
     seg1 = base64url_encode(json.dumps(header).encode('utf-8'))
     seg2 = base64url_encode(json.dumps(payload).encode('utf-8'))
     sig = hmac.new(SECRET_KEY.encode('utf-8'), f"{seg1}.{seg2}".encode('utf-8'), hashlib.sha256).digest()
-    seg3 = base64url_encode(sig)
-    return f"{seg1}.{seg2}.{seg3}"
+    return f"{seg1}.{seg2}.{base64url_encode(sig)}"
 
 def decode_access_token(token: str) -> dict:
     try:
@@ -76,12 +90,12 @@ def decode_access_token(token: str) -> dict:
             raise ValueError()
         payload = json.loads(base64url_decode(seg2).decode('utf-8'))
         if datetime.now(timezone.utc).timestamp() > payload.get("exp", 0):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
         return payload
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="Invalid authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -96,7 +110,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 def require_admin(current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin full access required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator permissions required")
     return current_user
 
 def get_db():
@@ -112,7 +126,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             hashed_password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user'
+            role TEXT NOT NULL DEFAULT 'user',
+            created_at TEXT DEFAULT (datetime('now')),
+            last_login TEXT
         )
     """)
     c.execute("""
@@ -130,11 +146,6 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
-    c.execute("PRAGMA table_info(expenses)")
-    cols = [r[1] for r in c.fetchall()]
-    if "user_id" not in cols:
-        c.execute("ALTER TABLE expenses ADD COLUMN user_id INTEGER REFERENCES users(id)")
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS budgets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,27 +156,18 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
-    c.execute("PRAGMA table_info(budgets)")
-    bcols = [r[1] for r in c.fetchall()]
-    if "user_id" not in bcols:
-        c.execute("ALTER TABLE budgets ADD COLUMN user_id INTEGER REFERENCES users(id)")
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE,
             default_currency TEXT DEFAULT 'INR',
-            theme TEXT DEFAULT 'dark',
+            theme TEXT DEFAULT 'light',
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
 
-    admin = c.execute("SELECT * FROM users WHERE username = ?", ("admin",)).fetchone()
-    if not admin:
-        c.execute(
-            "INSERT INTO users (username, hashed_password, role) VALUES (?, ?, ?)",
-            ("admin", hash_password("admin123"), "admin")
-        )
+    # Remove hardcoded admin
+    c.execute("DELETE FROM users WHERE username = 'admin' AND hashed_password = ?", (hash_password("admin123"),))
     conn.commit()
     conn.close()
 
@@ -174,6 +176,10 @@ init_db()
 class UserRegister(BaseModel):
     username: str
     password: str
+
+class PasswordResetRequest(BaseModel):
+    target_user_id: int
+    new_password: str
 
 class Expense(BaseModel):
     date: str
@@ -192,7 +198,7 @@ class Budget(BaseModel):
 
 class SettingsModel(BaseModel):
     default_currency: Optional[str] = "INR"
-    theme: Optional[str] = "dark"
+    theme: Optional[str] = "light"
 
 class AIQuery(BaseModel):
     message: str
@@ -200,34 +206,63 @@ class AIQuery(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"status": "online", "message": "FinFlow Expense Tracker API is running"}
+    return {"status": "online", "message": "FinFlow Intelligence Secure API"}
 
 @app.post("/api/auth/register", status_code=201)
 def register(user: UserRegister):
+    username = user.username.strip()
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+    validate_password_strength(user.password)
+
     conn = get_db()
     c = conn.cursor()
-    existing = c.execute("SELECT id FROM users WHERE username = ?", (user.username.strip(),)).fetchone()
+    existing = c.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
     if existing:
         conn.close()
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(status_code=400, detail="Username already registered")
+
+    # If first account registered in the system, promote to admin
+    count = c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    role = "admin" if count == 0 else "user"
 
     c.execute(
-        "INSERT INTO users (username, hashed_password, role) VALUES (?, ?, 'user')",
-        (user.username.strip(), hash_password(user.password))
+        "INSERT INTO users (username, hashed_password, role, last_login) VALUES (?, ?, ?, datetime('now'))",
+        (username, hash_password(user.password), role)
     )
     conn.commit()
     conn.close()
-    return {"message": "Account created successfully"}
+    return {"message": f"Account created as {role.upper()}", "role": role}
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    username = form_data.username.strip()
+    now = datetime.now()
+
+    # Rate limiting check
+    if username in FAILED_ATTEMPTS:
+        attempts, lock_until = FAILED_ATTEMPTS[username]
+        if lock_until and now < lock_until:
+            rem = int((lock_until - now).total_seconds())
+            raise HTTPException(status_code=429, detail=f"Account locked due to failed attempts. Try in {rem}s")
+
     conn = get_db()
     c = conn.cursor()
-    user = c.execute("SELECT * FROM users WHERE username = ?", (form_data.username.strip(),)).fetchone()
-    conn.close()
+    user = c.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
     if not user or not verify_password(form_data.password, user["hashed_password"]):
+        attempts, _ = FAILED_ATTEMPTS.get(username, (0, None))
+        attempts += 1
+        lock = (now + timedelta(minutes=LOCKOUT_MINUTES)) if attempts >= LOCKOUT_THRESHOLD else None
+        FAILED_ATTEMPTS[username] = (attempts, lock)
+        conn.close()
         raise HTTPException(status_code=400, detail="Invalid username or password")
+
+    # Reset attempts on success
+    FAILED_ATTEMPTS.pop(username, None)
+    c.execute("UPDATE users SET last_login = datetime('now') WHERE id = ?", (user["id"],))
+    conn.commit()
+    conn.close()
 
     token = create_access_token({"sub": user["username"], "id": user["id"], "role": user["role"]})
     return {
@@ -241,18 +276,43 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 def get_me(current_user: dict = Depends(get_current_user)):
     return current_user
 
+# ── User Management & Tracking (Superuser only) ──────────────────────────────
 @app.get("/api/admin/users")
-def get_all_users(admin: dict = Depends(require_admin)):
+def get_all_users_with_tracking(admin: dict = Depends(require_admin)):
     conn = get_db()
     c = conn.cursor()
-    users = c.execute("SELECT id, username, role FROM users ORDER BY id ASC").fetchall()
+    users = c.execute("""
+        SELECT u.id, u.username, u.role, u.created_at, u.last_login,
+               COUNT(e.id) as total_expenses,
+               COALESCE(SUM(e.amount), 0) as total_spent
+        FROM users u
+        LEFT JOIN expenses e ON e.user_id = u.id
+        GROUP BY u.id
+        ORDER BY u.id ASC
+    """).fetchall()
     conn.close()
     return [dict(u) for u in users]
+
+@app.post("/api/admin/reset-password")
+def admin_reset_password(req: PasswordResetRequest, admin: dict = Depends(require_admin)):
+    validate_password_strength(req.new_password)
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE users SET hashed_password = ? WHERE id = ?",
+        (hash_password(req.new_password), req.target_user_id)
+    )
+    if c.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    conn.commit()
+    conn.close()
+    return {"message": "Password updated successfully"}
 
 @app.delete("/api/admin/users/{user_id}")
 def delete_user(user_id: int, admin: dict = Depends(require_admin)):
     if admin["id"] == user_id:
-        raise HTTPException(status_code=400, detail="Cannot delete superuser")
+        raise HTTPException(status_code=400, detail="Cannot delete current administrator")
     conn = get_db()
     c = conn.cursor()
     c.execute("DELETE FROM expenses WHERE user_id = ?", (user_id,))
@@ -261,7 +321,7 @@ def delete_user(user_id: int, admin: dict = Depends(require_admin)):
     c.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
-    return {"message": "User purged"}
+    return {"message": "User and records deleted"}
 
 @app.get("/api/expenses")
 def list_expenses(
@@ -275,21 +335,21 @@ def list_expenses(
     params = []
 
     if current_user["role"] == "admin":
-        query = "SELECT * FROM expenses WHERE 1=1"
+        query = "SELECT e.*, u.username as owner FROM expenses e LEFT JOIN users u ON u.id = e.user_id WHERE 1=1"
     else:
-        query = "SELECT * FROM expenses WHERE (user_id = ? OR user_id IS NULL)"
+        query = "SELECT e.*, u.username as owner FROM expenses e LEFT JOIN users u ON u.id = e.user_id WHERE (e.user_id = ? OR e.user_id IS NULL)"
         params.append(current_user["id"])
 
     if search:
-        query += " AND (title LIKE ? OR notes LIKE ? OR tags LIKE ?)"
+        query += " AND (e.title LIKE ? OR e.notes LIKE ? OR e.tags LIKE ?)"
         wild = f"%{search}%"
         params.extend([wild, wild, wild])
     if category:
-        query += " AND category = ?"
+        query += " AND e.category = ?"
         params.append(category)
 
     sort_order = "ASC" if order.lower() == "asc" else "DESC"
-    query += f" ORDER BY date {sort_order}, id {sort_order}"
+    query += f" ORDER BY e.date {sort_order}, e.id {sort_order}"
 
     rows = c.execute(query, params).fetchall()
     conn.close()
@@ -555,7 +615,7 @@ def get_settings(current_user: dict = Depends(get_current_user)):
     conn.close()
     if row:
         return dict(row)
-    return {"default_currency": "INR", "theme": "dark"}
+    return {"default_currency": "INR", "theme": "light"}
 
 @app.put("/api/settings")
 def update_settings(settings: SettingsModel, current_user: dict = Depends(get_current_user)):
@@ -658,7 +718,6 @@ async def ai_chat(query: AIQuery, current_user: dict = Depends(get_current_user)
         f"SELECT date, title, amount, category FROM expenses WHERE 1=1 {u_filter} ORDER BY date DESC LIMIT 20",
         [] if current_user["role"] == "admin" else [current_user["id"]]
     ).fetchall()
-
     conn.close()
 
     context = f"""User context:
