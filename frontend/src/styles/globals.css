@@ -3,117 +3,136 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-canvas: #FBF8F3;
+    --bg-surface: #FFFFFF;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --border-subtle: rgba(214, 208, 196, 0.6);
+    --text-primary: #1E1E24;
+    --text-muted: #78716C;
+    --accent: #F59E0B;
+    --accent-hover: #D97706;
+  }
+
+  .dark {
+    --bg-canvas: #121316;
+    --bg-surface: #1A1C23;
+    --bg-card: rgba(26, 28, 35, 0.85);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --text-primary: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --accent: #F59E0B;
+    --accent-hover: #D97706;
+  }
+
   * { box-sizing: border-box; }
 
   body {
-    background-color: #FBF8F3;
-    color: #1E1E24;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
     font-family: 'Inter', system-ui, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
     overflow-x: hidden;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #F5EFEB; }
-  ::-webkit-scrollbar-thumb { 
-    background: #D97706; 
-    border-radius: 99px; 
-  }
-  ::-webkit-scrollbar-thumb:hover { background: #B45309; }
-
-  input, textarea, select {
-    @apply bg-white border border-stone-200/90 rounded-xl text-stone-900 placeholder-stone-400
-           focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20
-           transition-all duration-200;
-  }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D97706; border-radius: 99px; }
 }
 
 @layer components {
-  /* Applied Imagination Cream Aura Canvas */
   .applied-canvas {
-    background-color: #FBF8F3;
+    background-color: var(--bg-canvas);
     background-image: 
-      radial-gradient(at 10% 10%, rgba(245, 158, 11, 0.12) 0px, transparent 40%),
-      radial-gradient(at 90% 10%, rgba(217, 119, 6, 0.10) 0px, transparent 45%),
-      radial-gradient(at 50% 90%, rgba(251, 191, 36, 0.08) 0px, transparent 50%);
+      radial-gradient(at 10% 10%, rgba(245, 158, 11, 0.08) 0px, transparent 40%),
+      radial-gradient(at 90% 10%, rgba(217, 119, 6, 0.05) 0px, transparent 45%);
     background-attachment: fixed;
   }
 
   .glass-card {
-    @apply bg-white/90 backdrop-blur-md border border-stone-200/70 rounded-2xl shadow-sm
-           transition-all duration-200;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
   }
+
   .glass-card:hover {
     border-color: rgba(245, 158, 11, 0.4);
-    box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.1);
   }
 
-  .float-card {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
-  }
-  .float-card:hover {
-    transform: translateY(-3px);
-  }
-
-  /* Applied Imagination Golden Amber Primary Button */
   .btn-primary {
-    @apply relative inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-stone-950
-           bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600
-           hover:brightness-105 active:scale-95 shadow-md shadow-amber-500/20
-           transition-all duration-200 cursor-pointer overflow-hidden border border-amber-300;
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-stone-950
+           bg-amber-400 hover:bg-amber-500 active:scale-95 transition-all text-xs shadow-sm;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-stone-600 hover:text-stone-900
-           bg-stone-100 hover:bg-stone-200/70 border border-stone-200
-           transition-all duration-150 cursor-pointer active:scale-95;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+           border transition-all active:scale-95;
+    background-color: var(--bg-surface);
+    border-color: var(--border-subtle);
+    color: var(--text-muted);
   }
 
-  .nav-item {
-    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-stone-600
-           hover:text-stone-900 hover:bg-amber-500/10 transition-all duration-150 cursor-pointer;
-  }
-  .nav-item.active {
-    @apply text-stone-950 bg-amber-400/20 border-l-4 border-amber-500 shadow-sm;
+  .btn-ghost:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
   }
 
-  .label {
-    @apply block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5;
+  .btn-danger {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
+           bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20 transition-all;
   }
 
   .input-field {
-    @apply w-full px-3.5 py-2.5 bg-white border border-stone-200 rounded-xl text-stone-900 text-sm
-           placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20
-           transition-all duration-200;
+    @apply w-full px-3 py-2 rounded-lg text-xs border outline-none transition-all;
+    background-color: var(--bg-surface);
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
   }
 
-  .section-title {
-    @apply text-sm font-bold text-stone-900 tracking-wide uppercase flex items-center gap-2;
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  }
+
+  .nav-item {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold
+           transition-all cursor-pointer;
+    color: var(--text-muted);
+  }
+
+  .nav-item:hover {
+    color: var(--text-primary);
+    background-color: rgba(245, 158, 11, 0.08);
+  }
+
+  .nav-item.active {
+    color: #1E1E24;
+    background-color: rgba(245, 158, 11, 0.2);
+    border-left: 3px solid #F59E0B;
+  }
+
+  .dark .nav-item.active {
+    color: #F3F4F6;
+  }
+
+  .label {
+    @apply block text-[10px] font-bold uppercase tracking-wider mb-1;
+    color: var(--text-muted);
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border;
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border;
   }
 
   .table-row {
-    @apply flex items-center gap-4 px-4 py-3.5 hover:bg-stone-50/80 rounded-xl
-           transition-colors duration-100 cursor-default;
+    @apply flex items-center gap-4 px-4 py-3 rounded-lg transition-colors;
   }
 
-  .shimmer-text {
-    background: linear-gradient(90deg, #1E1E24, #D97706, #1E1E24);
-    background-size: 200% auto;
-    color: transparent;
-    -webkit-background-clip: text;
-    background-clip: text;
-    animation: shimmer 5s linear infinite;
+  .table-row:hover {
+    background-color: rgba(245, 158, 11, 0.04);
   }
-}
-
-.page-enter {
-  animation: pageEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes pageEnter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
 }

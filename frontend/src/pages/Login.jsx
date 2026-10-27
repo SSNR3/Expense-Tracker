@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { Sparkles, Shield, User, Lock, ArrowRight, UserPlus } from 'lucide-react'
+import { Sparkles, User, Lock, ArrowRight, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../utils/api.js'
 
@@ -25,7 +25,7 @@ export default function Login({ onLoginSuccess }) {
       const data = await api.auth.login(username, password)
       localStorage.setItem('token', data.access_token)
       localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }))
-      toast.success(`Welcome back, ${data.username}! (${data.role.toUpperCase()})`)
+      toast.success(`Welcome, ${data.username}!`)
       onLoginSuccess(data)
     } catch (err) {
       toast.error(err.message || 'Authentication failed')
@@ -35,25 +35,22 @@ export default function Login({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-screen applied-canvas flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-amber-400/15 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-amber-600/10 blur-[120px] pointer-events-none" />
-
-      <div className="w-full max-w-md glass-card p-8 relative z-10 animate-fade-in shadow-xl bg-white/95 border border-stone-200">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400 border border-amber-300 text-stone-950 shadow-md mb-3">
-            <Sparkles size="{28}"/>
+    <div className="min-h-screen applied-canvas flex items-center justify-center p-4">
+      <div className="w-full max-w-xs glass-card p-6 shadow-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-amber-400 text-stone-950 shadow-sm mb-2">
+            <Sparkles size={20} />
           </div>
-          <h1 className="text-2xl font-black text-stone-900 tracking-tight">FinFlow</h1>
-          <p className="text-stone-500 text-xs mt-1">Financial Intelligence & Multi-Tenant Engine</p>
+          <h1 className="text-lg font-bold text-stone-900 dark:text-white tracking-tight">FinFlow</h1>
+          <p className="text-stone-500 text-[11px]">Financial Operations Engine</p>
         </div>
 
-        <div className="flex bg-stone-100 p-1 rounded-xl mb-6 border border-stone-200">
+        <div className="flex bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg mb-4 text-xs">
           <button
             type="button"
             onClick={() => setIsRegister(false)}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-              !isRegister ? 'bg-white text-stone-900 shadow-sm border border-stone-200/60' : 'text-stone-500 hover:text-stone-900'
+            className={`flex-1 py-1.5 font-semibold rounded-md transition-all ${
+              !isRegister ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
             Sign In
@@ -61,23 +58,23 @@ export default function Login({ onLoginSuccess }) {
           <button
             type="button"
             onClick={() => setIsRegister(true)}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-              isRegister ? 'bg-white text-stone-900 shadow-sm border border-stone-200/60' : 'text-stone-500 hover:text-stone-900'
+            className={`flex-1 py-1.5 font-semibold rounded-md transition-all ${
+              isRegister ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
-            Create Account
+            Register
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="label flex items-center gap-1.5">
-              <User className="text-amber-600" size="{13}"/> Username
+            <label className="label flex items-center gap-1">
+              <User size={11} className="text-amber-500" /> Username
             </label>
             <input
               type="text"
               required
-              placeholder="Enter your username"
+              placeholder="Username"
               className="input-field"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -85,13 +82,13 @@ export default function Login({ onLoginSuccess }) {
           </div>
 
           <div>
-            <label className="label flex items-center gap-1.5">
-              <Lock className="text-amber-600" size="{13}"/> Password
+            <label className="label flex items-center gap-1">
+              <Lock size={11} className="text-amber-500" /> Password
             </label>
             <input
               type="password"
               required
-              placeholder={isRegister ? "Min 8 chars, 1 uppercase, 1 digit" : "••••••••"}
+              placeholder="••••••••"
               className="input-field"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -101,20 +98,20 @@ export default function Login({ onLoginSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full justify-center py-3 text-sm mt-2"
+            className="btn-primary w-full justify-center py-2 text-xs mt-2"
           >
-            {loading ? 'Authenticating...' : (
-              <span className="flex items-center gap-2 font-bold">
-                {isRegister ? <UserPlus size="{16}"/> : <ArrowRight size="{16}"/>}
-                {isRegister ? 'Register Account' : 'Access Portal'}
+            {loading ? 'Processing...' : (
+              <span className="flex items-center gap-1.5">
+                {isRegister ? <UserPlus size={14} /> : <ArrowRight size={14} />}
+                {isRegister ? 'Create Account' : 'Authenticate'}
               </span>
             )}
           </button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-stone-100 text-center">
-          <p className="text-stone-400 text-[11px]">
-            {isRegister ? "The first registered user is automatically promoted to Superuser." : "Protected by timing-safe encryption & rate limiting."}
+        <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800 text-center">
+          <p className="text-stone-400 text-[10px]">
+            {isRegister ? "First user registered becomes Superuser." : "Protected by rate-limiting & HMAC authentication."}
           </p>
         </div>
       </div>

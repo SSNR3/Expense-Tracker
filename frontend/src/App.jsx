@@ -24,11 +24,21 @@ export default function App() {
   const [page, setPage] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
-  const [settings, setSettings] = useState({ default_currency: 'INR' })
+  const [settings, setSettings] = useState({ default_currency: 'INR', theme: 'light' })
   const [summary, setSummary] = useState(null)
   const [showParty, setShowParty] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const prevMomRef = useRef(null)
+
+  // Initialize theme from storage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'light'
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [])
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token')
@@ -44,7 +54,15 @@ export default function App() {
 
   useEffect(() => {
     if (!currentUser) return
-    api.settings.get().then(s => setSettings(s)).catch(() => {})
+    api.settings.get().then(s => {
+      setSettings(s)
+      if (s.theme) {
+        if (s.theme === 'dark') document.documentElement.classList.add('dark')
+        else document.documentElement.classList.remove('dark')
+        localStorage.setItem('theme', s.theme)
+      }
+    }).catch(() => {})
+
     api.analytics.summary().then(s => {
       setSummary(s)
       if (s.mom_change_pct < -10 && s.total_month > 0) {
@@ -92,7 +110,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen applied-canvas flex text-stone-900 relative">
+    <div className="min-h-screen applied-canvas flex text-stone-900 dark:text-stone-100 relative">
       <ConfettiCanvas active={showConfetti} onDone={() => setShowConfetti(false)} />
       <PartyPopup show={showParty} onDone={() => setShowParty(false)} />
 
@@ -102,68 +120,60 @@ export default function App() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:sticky top-0 h-screen w-64 flex-shrink-0
-        bg-white/95 backdrop-blur-xl border-r border-stone-200/80
+        fixed lg:sticky top-0 h-screen w-60 flex-shrink-0
+        bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800
         flex flex-col z-40 transition-transform duration-300
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-5 border-b border-stone-200/60">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400 border border-amber-300 flex items-center justify-center text-stone-950 shadow-sm">
-              <TrendingUp size={20} />
+        <div className="p-4 border-b border-stone-200 dark:border-stone-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-400 border border-amber-300 flex items-center justify-center text-stone-950 shadow-sm">
+              <TrendingUp size={16} />
             </div>
             <div>
-              <div className="font-extrabold text-stone-900 text-base tracking-tight">FinFlow</div>
-              <div className="text-stone-400 text-xs">Financial Intelligence</div>
+              <div className="font-extrabold text-stone-900 dark:text-white text-sm tracking-tight">FinFlow</div>
+              <div className="text-stone-400 text-[10px]">Operations & Intelligence</div>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <div className="text-stone-400 text-[10px] font-bold uppercase tracking-widest px-3 pb-2 pt-1">Menu</div>
+        <nav className="flex-1 p-2.5 space-y-1 overflow-y-auto">
           {navItems.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => { sound.pop(); handleNavigate(id) }}
               className={`nav-item w-full text-left ${page === id ? 'active' : ''}`}
             >
-              <Icon size={16} />
+              <Icon size={14} />
               {label}
-              {page === id && (
-                <div className="ml-auto w-2 h-2 rounded-full bg-amber-500" />
-              )}
             </button>
           ))}
         </nav>
 
-        <div className="p-3 border-t border-stone-200/60 space-y-2">
+        <div className="p-3 border-t border-stone-200 dark:border-stone-800 space-y-2">
           <button
             onClick={() => { sound.pop(); setAiOpen(true) }}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold
-                       bg-amber-400/20 border border-amber-400/40 text-stone-900 hover:bg-amber-400/30 transition-all shadow-sm"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold
+                       bg-amber-400/20 text-stone-900 dark:text-white border border-amber-400/30 hover:bg-amber-400/30 transition-all"
           >
-            <Bot size={16} className="text-amber-700" />
-            AI Financial Advisor
-            <div className="ml-auto w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Bot size={14} className="text-amber-600" />
+            AI Advisor
           </button>
 
-          <div className="glass-card px-3.5 py-2.5 flex items-center justify-between bg-stone-50/80">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className={`w-2 h-2 rounded-full ${currentUser.role === 'admin' ? 'bg-amber-500' : 'bg-stone-400'}`} />
-              <div className="truncate">
-                <div className="text-xs font-bold text-stone-900 truncate">{currentUser.username}</div>
-                <div className="text-[10px] uppercase tracking-wider text-amber-700 flex items-center gap-1 font-bold">
-                  {currentUser.role === 'admin' && <Shield size={10} />}
-                  {currentUser.role}
-                </div>
+          <div className="p-2.5 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 flex items-center justify-between">
+            <div className="truncate pr-2">
+              <div className="text-xs font-bold text-stone-900 dark:text-white truncate">{currentUser.username}</div>
+              <div className="text-[10px] uppercase tracking-wider text-amber-600 font-bold flex items-center gap-1">
+                {currentUser.role === 'admin' && <Shield size={9} />}
+                {currentUser.role}
               </div>
             </div>
             <button
               onClick={handleLogout}
+              className="p-1 rounded-md text-stone-400 hover:text-rose-600 transition-all"
               title="Logout"
-              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
             >
-              <LogOut size={15} />
+              <LogOut size={13} />
             </button>
           </div>
         </div>
@@ -171,29 +181,26 @@ export default function App() {
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-stone-200/80 px-4 lg:px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden btn-ghost p-2">
-              <Menu size={18} />
+        <header className="sticky top-0 z-20 bg-white/70 dark:bg-stone-900/70 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden btn-ghost p-1.5">
+              <Menu size={16} />
             </button>
             <div>
-              <h1 className="text-stone-900 font-bold text-base leading-none capitalize">
+              <h1 className="text-stone-900 dark:text-white font-bold text-sm capitalize">
                 {page.replace('-', ' ')}
               </h1>
-              <p className="text-stone-400 text-xs mt-1">
-                {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {currentUser.role === 'admin' && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-800 text-xs font-bold">
-                <Shield size={12} className="text-amber-600" /> Super User Access
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
+                <Shield size={10} /> Superuser Mode
               </span>
             )}
             <button onClick={() => { sound.pop(); setAiOpen(true) }} className="btn-ghost text-xs">
-              <Bot size={13} className="text-amber-600" /> Ask AI
+              <Bot size={12} className="text-amber-500" /> Consult AI
             </button>
           </div>
         </header>

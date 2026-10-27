@@ -26,6 +26,23 @@ async function req(path, options = {}) {
   return res.json();
 }
 
+async function downloadFile(path, filename) {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) throw new Error('Export failed');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export const api = {
   auth: {
     login: async (username, password) => {
@@ -79,14 +96,8 @@ export const api = {
     insights: () => req('/ai/insights'),
   },
   export: {
-    csv: () => {
-      const token = localStorage.getItem('token');
-      window.open(`${BASE}/export/csv?token=${token || ''}`, '_blank');
-    },
-    json: () => {
-      const token = localStorage.getItem('token');
-      window.open(`${BASE}/export/json?token=${token || ''}`, '_blank');
-    },
+    csv: () => downloadFile('/export/csv', 'expenses.csv'),
+    json: () => downloadFile('/export/json', 'expenses.json'),
   },
 };
 
