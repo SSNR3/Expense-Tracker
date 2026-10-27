@@ -1,4 +1,3 @@
-// AFTER
 const BASE = "https://expense-trackerbackend-225b.onrender.com/api";
 
 async function req(path, options = {}) {
